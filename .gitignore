@@ -3,3 +3,7 @@
 
 debug.spv
 debug.txt
+debug.wgsl
+output.png
+
+/src/shader.*
