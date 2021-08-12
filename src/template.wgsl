@@ -10,10 +10,14 @@ struct FragmentData {
     [[builtin(position)]] position: vec4<f32>;
 };
 
+var indexable: array<vec2<f32>,6u> = array<vec2<f32>,6u>(
+    vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0),
+    vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0), vec2<f32>(-1.0, -1.0)
+);
+
 [[stage(vertex)]]
 fn vert_main([[builtin(vertex_index)]] vert_index: u32) -> FragmentData {
     var data: FragmentData;
-    var indexable = array<vec2<f32>,3u>(vec2<f32>(0.0, 0.5), vec2<f32>(-0.5, -0.5), vec2<f32>(0.5, -0.5));
     let xy = indexable[vert_index];
     data.position = vec4<f32>(xy.x, xy.y, 0.0, 1.0);
     return data;
