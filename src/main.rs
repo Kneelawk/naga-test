@@ -31,8 +31,8 @@ use wgpu::{
 
 const TEMPLATE_SOURCE: &str = include_str!("template.wgsl");
 
-const TEXTURE_WIDTH: u32 = 256;
-const TEXTURE_HEIGHT: u32 = 256;
+const TEXTURE_WIDTH: u32 = 512;
+const TEXTURE_HEIGHT: u32 = 512;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
