@@ -98,7 +98,7 @@ async fn main() {
             module: &module,
             entry_point: "frag_main",
             targets: &[ColorTargetState {
-                format: TextureFormat::Rgba8UnormSrgb,
+                format: TextureFormat::Rgba8Unorm,
                 blend: Some(BlendState::REPLACE),
                 write_mask: ColorWrite::ALL,
             }],
@@ -207,7 +207,7 @@ fn create_texture(device: &Device, width: u32, height: u32) -> (Texture, Texture
         mip_level_count: 1,
         sample_count: 1,
         dimension: TextureDimension::D2,
-        format: TextureFormat::Rgba8UnormSrgb,
+        format: TextureFormat::Rgba8Unorm,
         usage: TextureUsage::COPY_SRC | TextureUsage::RENDER_ATTACHMENT,
     });
     let texture_view = texture.create_view(&Default::default());
