@@ -5,6 +5,7 @@ use crate::{
     buffer::{BufferWrapper, Encodable},
     gpu_view::GPUView,
     uniforms::Uniforms,
+    util::copy_region,
     view::View,
 };
 use core::num::NonZeroU32;
@@ -239,9 +240,25 @@ async fn main() {
 
         let data = buffer_slice.get_mapped_range();
 
+        info!("Copying image...");
+        let mut image_data =
+            vec![0u8; IMAGE_WIDTH as usize * IMAGE_HEIGHT as usize * size_of::<u32>()];
+        copy_region(
+            data.as_ref(),
+            TEXTURE_WIDTH as usize,
+            0,
+            0,
+            &mut image_data,
+            IMAGE_WIDTH as usize,
+            0,
+            0,
+            IMAGE_WIDTH as usize,
+            IMAGE_HEIGHT as usize,
+        );
+
         info!("Writing image...");
         let image =
-            ImageBuffer::<Rgba<u8>, _>::from_raw(TEXTURE_WIDTH, TEXTURE_HEIGHT, data).unwrap();
+            ImageBuffer::<Rgba<u8>, _>::from_raw(IMAGE_WIDTH, IMAGE_HEIGHT, image_data).unwrap();
         image.save("output.png").unwrap();
     }
     buffer.unmap();
