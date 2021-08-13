@@ -1,12 +1,25 @@
 struct FragmentData {
     [[builtin(position)]] position: vec4<f32>;
-    [[location(0)]] fragment_position: vec2<f32>;
+};
+
+struct View {
+    image_size: vec2<f32>;
+    image_scale: vec2<f32>;
+    plane_start: vec2<f32>;
+};
+
+[[block]]
+struct Uniforms {
+    view: View;
 };
 
 var indexable: array<vec2<f32>,6u> = array<vec2<f32>,6u>(
     vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0),
     vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0), vec2<f32>(-1.0, -1.0)
 );
+
+[[group(0), binding(0)]]
+var<uniform> uniforms: Uniforms;
 
 let iterations: i32 = 200;
 let c: vec2<f32> = vec2<f32>(0.16611, 0.59419);
@@ -16,7 +29,6 @@ fn vert_main([[builtin(vertex_index)]] vert_index: u32) -> FragmentData {
     var data: FragmentData;
     let xy = indexable[vert_index];
     data.position = vec4<f32>(xy, 0.0, 1.0);
-    data.fragment_position = xy;
     return data;
 }
 
@@ -69,7 +81,12 @@ fn f(z: vec2<f32>, c: vec2<f32>) -> vec2<f32> {
 
 [[stage(fragment)]]
 fn frag_main(data: FragmentData) -> [[location(0)]] vec4<f32> {
-    var z = data.fragment_position;
+    // Only generate fractals for the requested area.
+    if (data.position.x >= uniforms.view.image_size.x || data.position.y >= uniforms.view.image_size.y) {
+        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+    }
+
+    var z = uniforms.view.plane_start + data.position.xy * uniforms.view.image_scale;
 
     var n: i32 = 0;
     for (; n < iterations; n = n + 1) {

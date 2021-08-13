@@ -1,43 +1,65 @@
 #[macro_use]
 extern crate log;
 
-use core::num::NonZeroU32;
-use std::{
-    borrow::Cow,
-    convert::TryFrom,
-    mem::size_of,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
+use crate::{
+    buffer::{BufferWrapper, Encodable},
+    gpu_view::GPUView,
+    uniforms::Uniforms,
+    view::View,
 };
-
+use core::num::NonZeroU32;
 use image::{ImageBuffer, Rgba};
 use naga::{
     back, front,
     valid::{ValidationFlags, Validator},
 };
+use std::{
+    borrow::Cow,
+    convert::TryFrom,
+    mem::size_of,
+    num::NonZeroU64,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 use tokio::{fs::File, io::AsyncWriteExt, task};
 use wgpu::{
-    BackendBit, BlendState, Buffer, BufferAddress, BufferDescriptor, BufferUsage, Color,
-    ColorTargetState, ColorWrite, CommandEncoderDescriptor, Device, Extent3d, Face, FragmentState,
-    FrontFace, ImageCopyBuffer, ImageCopyTexture, ImageDataLayout, Instance, LoadOp, Maintain,
-    MapMode, MultisampleState, Operations, Origin3d, PipelineLayoutDescriptor, PolygonMode,
-    PrimitiveState, PrimitiveTopology, RenderPassColorAttachment, RenderPassDescriptor,
-    RenderPipelineDescriptor, RequestAdapterOptions, ShaderFlags, ShaderModuleDescriptor,
-    ShaderSource, Texture, TextureDescriptor, TextureDimension, TextureFormat, TextureUsage,
-    TextureView, VertexState,
+    BackendBit, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, BlendState, Buffer, BufferAddress,
+    BufferBinding, BufferBindingType, BufferDescriptor, BufferUsage, Color, ColorTargetState,
+    ColorWrite, CommandEncoderDescriptor, Device, Extent3d, Face, FragmentState, FrontFace,
+    ImageCopyBuffer, ImageCopyTexture, ImageDataLayout, Instance, LoadOp, Maintain, MapMode,
+    MultisampleState, Operations, Origin3d, PipelineLayoutDescriptor, PolygonMode, PrimitiveState,
+    PrimitiveTopology, RenderPassColorAttachment, RenderPassDescriptor, RenderPipelineDescriptor,
+    RequestAdapterOptions, ShaderFlags, ShaderModuleDescriptor, ShaderSource, ShaderStage, Texture,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureUsage, TextureView, VertexState,
 };
+
+mod buffer;
+mod gpu_view;
+mod uniforms;
+mod util;
+mod view;
 
 const TEMPLATE_SOURCE: &str = include_str!("template.wgsl");
 
-const TEXTURE_WIDTH: u32 = 512;
-const TEXTURE_HEIGHT: u32 = 512;
+const IMAGE_WIDTH: u32 = 907;
+const IMAGE_HEIGHT: u32 = 907;
+
+const TEXTURE_WIDTH: u32 = util::smallest_multiple_containing(
+    IMAGE_WIDTH,
+    wgpu::COPY_BYTES_PER_ROW_ALIGNMENT / size_of::<u32>() as u32,
+);
+const TEXTURE_HEIGHT: u32 = IMAGE_HEIGHT;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     dotenv::dotenv().ok();
     env_logger::init();
+
+    info!("Creating View...");
+    let view = View::new_centered_uniform(IMAGE_WIDTH as usize, IMAGE_HEIGHT as usize, 3.0);
 
     info!("Creating Instance...");
     let instance = Instance::new(BackendBit::PRIMARY);
@@ -79,10 +101,45 @@ async fn main() {
         flags: ShaderFlags::VALIDATION | ShaderFlags::EXPERIMENTAL_TRANSLATION,
     });
 
+    info!("Creating uniforms...");
+    let uniforms = Uniforms {
+        view: GPUView::from_view(view),
+    };
+    let (uniforms_buffer, uniforms_cb) =
+        BufferWrapper::from_data(&device, &[uniforms], BufferUsage::UNIFORM);
+    queue.submit([uniforms_cb]);
+
+    let uniform_bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: Some("Uniforms bind group layout"),
+        entries: &[BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStage::VERTEX_FRAGMENT,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: Some(NonZeroU64::new(Uniforms::size() as u64).unwrap()),
+            },
+            count: None,
+        }],
+    });
+
+    let uniform_bind_group = device.create_bind_group(&BindGroupDescriptor {
+        label: Some("Uniforms bind group"),
+        layout: &uniform_bind_group_layout,
+        entries: &[BindGroupEntry {
+            binding: 0,
+            resource: BindingResource::Buffer(BufferBinding {
+                buffer: uniforms_buffer.buffer(),
+                offset: 0,
+                size: None,
+            }),
+        }],
+    });
+
     info!("Creating render pipeline...");
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
-        bind_group_layouts: &[],
+        bind_group_layouts: &[&uniform_bind_group_layout],
         push_constant_ranges: &[],
     });
 
@@ -145,6 +202,7 @@ async fn main() {
         });
 
         render_pass.set_pipeline(&render_pipeline);
+        render_pass.set_bind_group(0, &uniform_bind_group, &[]);
         render_pass.draw(0..6, 0..1);
     }
 
