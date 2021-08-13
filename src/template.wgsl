@@ -63,6 +63,10 @@ fn fromHSB(hue: f32, saturation: f32, brightness: f32, alpha: f32) -> vec4<f32> 
     }
 }
 
+fn f(z: vec2<f32>, c: vec2<f32>) -> vec2<f32> {
+    return complex_add(complex_sqr(z), c);
+}
+
 [[stage(fragment)]]
 fn frag_main(data: FragmentData) -> [[location(0)]] vec4<f32> {
     var z = data.fragment_position;
@@ -73,7 +77,7 @@ fn frag_main(data: FragmentData) -> [[location(0)]] vec4<f32> {
             break;
         }
 
-        z = complex_add(complex_sqr(z), c);
+        z = f(z, c);
     }
 
     if (n >= iterations) {
