@@ -53,11 +53,11 @@ fn fromHSB(hue: f32, saturation: f32, brightness: f32, alpha: f32) -> vec4<f32> 
     if (saturation == 0.0) {
         return vec4<f32>(brightness, brightness, brightness, alpha);
     } else {
-        let sector = ((hue - floor(hue)) * 6.0);
-        let offset = (sector - floor(sector));
-        let off = (brightness * (1.0 - saturation));
-        let fadeOut = (brightness * (1.0 - (saturation * offset)));
-        let fadeIn = (brightness * (1.0 - (saturation * (1.0 - offset))));
+        let sector = (hue % 1.0) * 6.0;
+        let offset = sector - floor(sector);
+        let off = brightness * (1.0 - saturation);
+        let fadeOut = brightness * (1.0 - (saturation * offset));
+        let fadeIn = brightness * (1.0 - (saturation * (1.0 - offset)));
         switch(i32(sector)) {
             case 0: {
                 return vec4<f32>(brightness, fadeIn, off, alpha);
