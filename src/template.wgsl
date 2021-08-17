@@ -21,6 +21,7 @@ var indexable: array<vec2<f32>,6u> = array<vec2<f32>,6u>(
 [[group(0), binding(0)]]
 var<uniform> uniforms: Uniforms;
 
+let offset: vec2<f32> = vec2<f32>(-0.5, -0.5);
 let iterations: i32 = 200;
 let c: vec2<f32> = vec2<f32>(0.16611, 0.59419);
 
@@ -86,11 +87,11 @@ fn frag_main(data: FragmentData) -> [[location(0)]] vec4<f32> {
         return vec4<f32>(0.0, 0.0, 0.0, 1.0);
     }
 
-    var z = uniforms.view.plane_start + data.position.xy * uniforms.view.image_scale;
+    var z = uniforms.view.plane_start + (data.position.xy + offset) * uniforms.view.image_scale;
 
     var n: i32 = 0;
     for (; n < iterations; n = n + 1) {
-        if (length_sqr(z) > 4.0) {
+        if (length_sqr(z) > 16.0) {
             break;
         }
 
